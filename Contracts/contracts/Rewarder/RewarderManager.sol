@@ -14,12 +14,6 @@ contract RewarderManager{
     mapping (address => uint) public session;
     IERC1155 RobotParts;
 
-    //ivents
-
-    //[[[1, 2, 3, 4, 5],"0xb9ce63b2df603c417d12d9cea3a81c019b190fcc", 0,"0xcd5181715c25e45f67efc69c0c5901489dae878c021c167a689ec81213dd1cb15f8c9bd5eb784071c3e376861de2d1793145fda3250bb34f52224fc200ba36681b"], [[1, 2, 3, 4, 5],"0xb9ce63b2df603c417d12d9cea3a81c019b190fcc", 123,"0x8d81573de27efa4152b6e13a6836ad6dbe3eac2c823d571b15b1103ded8ac7e56fd1735a4986df351f5faa0abdfb6d86e9a74afee3123803e10b6a4778753bc51c"], [[1, 2, 3, 4, 5],"0xb9ce63b2df603c417d12d9cea3a81c019b190fcc", 12512,"0x8964beb84fb84f70e75e50e8f25606f1f4d3eff6468d7638fa0834456d3120e06bcbacd3bf6e1ade582bfefc31e9bf392d41a9a28daaa252433b1dfe73046a681b"]]
-    //"0x8be48c31f9f51a794e8304ca67f55d66c223be9a690f8cbe8e94bcfc2f39900a76656fcd97a8a7180d5738e92aa6016f7da015e596b7a3bba701723fe0f2eb451c"
-    //0xb9cE63B2Df603c417d12d9ceA3A81c019b190Fcc
-    
     struct transaction{
         uint8[5] rewards;
         address address_;
@@ -41,11 +35,15 @@ contract RewarderManager{
         require(msg.sender == owner, "You are not an owner");
         server1 = server1_;
     }
+
     function setServer2 (address server2_) public{
         require(msg.sender == owner, "You are not an owner");
         server2 = server2_;
     }
 
+    function getSessionId (address user) public view returns(uint){
+        return session[user];
+    }
     function unstorage (transaction[] memory _txs, bytes memory sign)public {
         require(areAllTxsSigned(_txs, sign), "RewarderManager: wrong signature");
         session[msg.sender] += 1;
@@ -74,9 +72,11 @@ contract RewarderManager{
         for (uint i = 0; i < _txs.length; i++){
             gsign = abi.encodePacked(gsign, _txs[i].sign);
         }
-        bool r = isSigned(keccak256(gsign), sign, server2);
+        bool r = isSigned(keccak256(gsign), sign, server1);
+        require(r, "RewarderManager: General signature error");
         for (uint i = 0; i < _txs.length; i++){
-            r = isTxSigned(_txs[i], server1) && r;
+            r = isTxSigned(_txs[i], server2) && r;
+            require(r, "RewarderManager: Tx signature error");
         }
         return r; 
     }
