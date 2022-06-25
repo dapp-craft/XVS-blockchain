@@ -9,9 +9,9 @@ contract RewarderManager{
 
     address internal owner;
     address dropStorage;
-    address server1; //main server
-    address server2; //oper server
-    mapping (address => uint) public session;
+    address coreServer; //main server
+    address questServer; //oper server
+    mapping (address => uint) public nonce;
     IERC1155 RobotParts;
 
     struct transaction{
@@ -31,22 +31,22 @@ contract RewarderManager{
         dropStorage = newStorage_;
     }
 
-    function setServer1 (address server1_) public{
+    function setCoreServer (address server1_) public{
         require(msg.sender == owner, "You are not an owner");
-        server1 = server1_;
+        coreServer = server1_;
     }
 
-    function setServer2 (address server2_) public{
+    function setQuestServer (address server2_) public{
         require(msg.sender == owner, "You are not an owner");
-        server2 = server2_;
+        questServer = server2_;
     }
 
     function getSessionId (address user) public view returns(uint){
-        return session[user];
+        return nonce[user];
     }
-    function unstorage (transaction[] memory _txs, bytes memory sign)public {
+    function unstorage (transaction[] calldata _txs, bytes calldata sign)public {
         require(areAllTxsSigned(_txs, sign), "RewarderManager: wrong signature");
-        session[msg.sender] += 1;
+        nonce[msg.sender] += 1;
         uint256[] memory robotPartsAmount = new uint[](5);
         for (uint i = 0; i < _txs.length; i++){
             for(uint k = 0; k < 5; k++){
@@ -66,31 +66,30 @@ contract RewarderManager{
         RobotParts.safeBatchTransferFrom(dropStorage, msg.sender, ids, robotPartsAmount, "");
     }
 
-    function areAllTxsSigned(transaction[] memory _txs, bytes memory sign) private view returns(bool){
-        
+    function areAllTxsSigned(transaction[] calldata _txs, bytes calldata sign) private view returns(bool){
         bytes memory gsign;
         for (uint i = 0; i < _txs.length; i++){
             gsign = abi.encodePacked(gsign, _txs[i].sign);
         }
-        bool r = isSigned(keccak256(gsign), sign, server1);
+        bool r = isSigned(keccak256(gsign), sign, coreServer);
         require(r, "RewarderManager: General signature error");
         for (uint i = 0; i < _txs.length; i++){
-            r = isTxSigned(_txs[i], server2) && r;
+            r = isTxSigned(_txs[i], questServer) && r;
             require(r, "RewarderManager: Tx signature error");
         }
         return r; 
     }
 
-    function isTxSigned (transaction memory _tx, address _address)private view returns(bool){
+    function isTxSigned (transaction calldata _tx, address _address)private view returns(bool){
         bytes32 _messageHash = keccak256(txMessage(_tx));
         return isSigned(_messageHash, _tx.sign, _address);
     }
 
-    function txMessage(transaction memory _tx)private view returns(bytes memory){
-        return abi.encodePacked(_tx.rewards[0],_tx.rewards[1],_tx.rewards[2],_tx.rewards[3],_tx.rewards[4],_tx.address_, _tx.id, msg.sender, session[msg.sender]);
+    function txMessage(transaction calldata _tx)private view returns(bytes memory){
+        return abi.encodePacked(_tx.rewards[0],_tx.rewards[1],_tx.rewards[2],_tx.rewards[3],_tx.rewards[4],_tx.address_, _tx.id, msg.sender, nonce[msg.sender]);
     }
 
-    function isSigned (bytes32 _messageHash, bytes memory _sign, address _address)private pure returns(bool){
+    function isSigned (bytes32 _messageHash, bytes calldata _sign, address _address)private pure returns(bool){
         return recover(getEthSignedHash(_messageHash), _sign) == _address;
     }
 
