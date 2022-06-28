@@ -1,5 +1,5 @@
 # XVS Token and Rewarder contrracts
-This repository contents contracts for Crossverse project
+This repository contains blockchain contracts for Crossverse project
 
 ## Content:
 - **contracts/RobotParts/**: ERC1155 contract for Robot Parts tokens
